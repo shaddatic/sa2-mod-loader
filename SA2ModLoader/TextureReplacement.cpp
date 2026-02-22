@@ -883,16 +883,49 @@ static bool try_texture_pack(const char* filename, NJS_TEXLIST* texlist)
 	GetReplaceTextures(pathbuf, replacements);
 
 	// If the replaced path is a file, we should check if it's a PVMX archive.
-	if (IsFile(replaced))
+	if ( IsFile(replaced) )
 	{
 		ifstream pvmx(replaced, ios::in | ios::binary);
-		if (pvmx::is_pvmx(pvmx))
-			return replace_pvmx(replaced, pvmx, texlist, replacements);
-		return PAKFile::is_pak(pvmx) && replace_pak(replaced, filename, pvmx, texlist, replacements);
+
+		if ( pvmx::is_pvmx(pvmx) )
+		{
+			PrintDebug("Warning! Reading file: textures/%s.pvmx", filename);
+
+			if ( !replace_pvmx(replaced, pvmx, texlist, replacements) )
+			{
+				PrintDebug("Warning! Failed to read PVMX file, it may be improperly formatted!");
+				return false;
+			}
+
+			return true;
+		}
+		else if ( PAKFile::is_pak(pvmx) )
+		{
+			PrintDebug("Warning! Reading file: %sPRS/%s.pak", &BaseResourceFolder, filename);
+
+			if ( !replace_pak(replaced, filename, pvmx, texlist, replacements) )
+			{
+				PrintDebug("Warning! Failed to read PAK file, it may be improperly formatted!");
+				return false;
+			}
+			
+			return true;
+		}
+
+		// not a pak or PVMX file, or failed to load. Return to PRS logic
+		return false;
 	}
 
 	// Otherwise it's probably a directory, so try loading it as a texture pack.
-	return replace_pvm(replaced, texlist, replacements);
+	PrintDebug("Warning! Reading texture pack: %s%s", &BaseResourceFolder, filename);
+
+	if ( !replace_pvm(replaced, texlist, replacements) )
+	{
+		PrintDebug("Warning! Failed to read texture pack, it may be improperly formatted!");
+		return false;
+	}
+
+	return true;
 }
 
 int __cdecl LoadPAKTextures_r(const char* filename, NJS_TEXLIST* texlist)
