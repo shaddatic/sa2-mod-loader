@@ -771,12 +771,14 @@ static bool replace_pak(const string& path, const string& oldpath, ifstream& fil
 		string lower = entnam;
 		transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
 
+		bool isKeyboardName = false;
 		if (!InputMode[0])
 			for (auto tn : keyboardTextureNames)
 				if (!lower.compare(tn))
 				{
 					lower.append("k");
 					strcat_s(entnam, "K");
+					isKeyboardName = true;
 					break;
 				}
 
@@ -787,6 +789,16 @@ static bool replace_pak(const string& path, const string& oldpath, ifstream& fil
 		if (!texture)
 		{
 			auto texfil = pak.find(pvm_name + "\\" + lower + ".dds");
+
+			// Hardcoded fallback to prevent crashes if a keyboard texture is missing from an archive.
+			if (!texfil && isKeyboardName)
+			{
+				memcpy(entnam, entry.filename, sizeof(entry.filename));
+				lower = entnam;
+				transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+				texfil = pak.find(pvm_name + "\\" + lower + ".dds");
+			}
+
 			if (texfil)
 			{
 				std::istringstream texstr(std::string(reinterpret_cast<char*>(texfil->data), texfil->length));
