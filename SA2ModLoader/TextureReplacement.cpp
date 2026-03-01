@@ -42,7 +42,10 @@ static unordered_map<string, vector<pvmx::DictionaryEntry>> archive_cache;
 static unordered_map<string, unordered_map<string, TexReplaceData>*> replace_cache;
 static bool was_loading = false;
 
-DataPointer(NJS_TEXMANAGE*, TexManageCache, 0x2670590);
+DataPointer(Sint32        , _nj_tex_count    , 0x025F0260);
+DataPointer(Sint32        , _nj_texmanagesize, 0x0267058C);
+DataPointer(Sint32        , _nj_texsyssize   , 0x025EFFE0);
+DataPointer(NJS_TEXMANAGE*, TexManageCache   , 0x02670590);
 
 UsercallFunc(int, FindCachedTextureIndex, (int gbix), (gbix), 0x42FAD0, rEAX, rEDI);
 UsercallFunc(int, FindFreeTextureIndex, (int gbix), (gbix), 0x4309D0, rEAX, rESI);
@@ -451,10 +454,13 @@ NJS_TEXMANAGE* load_texture_stream(istream& file, uint64_t offset, uint64_t size
 	auto texture = GetCachedTexture(global_index);
 
 	// GetCachedTexture will only return null if over 2048 unique textures have been loaded.
-	if (texture == nullptr)
+	if ( texture == nullptr )
 	{
-		PrintDebug("Failed to allocate global texture for gbix %u (likely exceeded max global texture limit)\n",
-			global_index);
+		const Int nb_texture = min(_nj_texmanagesize, _nj_texsyssize);
+
+		PrintDebug("Failed to find texture slot for GBIX '%u', texture limit may be reached! (%i/%i)",
+			global_index, _nj_tex_count, nb_texture);
+
 		return nullptr;
 	}
 
@@ -1112,8 +1118,11 @@ void LoadTextureList_NoName_r(NJS_TEXLIST* texlist)
 
 			if ( v13 == nullptr )
 			{
-				PrintDebug("njLoadTexture(): Failed to allocate global texture for gbix %u (likely exceeded max global texture limit)\n",
-						   v1->texaddr);
+				const Int nb_texture = min(_nj_texmanagesize, _nj_texsyssize);
+
+				PrintDebug("Failed to find texture slot for GBIX '%u', texture limit may be reached! (%i/%i)",
+						   v3, _nj_tex_count, nb_texture);
+
 				continue;
 			}
 
